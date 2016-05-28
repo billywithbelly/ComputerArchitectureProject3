@@ -49,67 +49,67 @@ void checkCache(int);
 
 int main ()
 {
-	initial ();
-	loadImage (PC, registers, IMemory, DMemory);
-	produceSnapShot(PC, snapShot, registers, cycle++);
-	
-	while (!halt)
-		singleCycle ();
-		
-	
-	return 0;
+    initial ();
+    loadImage (PC, registers, IMemory, DMemory);
+    produceSnapShot(PC, snapShot, registers, cycle++);
+    
+    while (!halt)
+        singleCycle ();
+        
+    
+    return 0;
 }
 
 void initial ()
 {
-	cycle = 0;
-	halt = false;
-	for (int i=0; i<32; i++)
-		registers[i] = 0;
-	PC = 0;
-	for (int i=0; i<MAX_LENGTH; i++){
-		DMemory[i] = 0;
-		IMemory[i] = 0;
-	}
-	numBlock = 0;
-	numSet = 0;
-	PTESize = 0;
-	TLBSize = 0;
-	PPNMAX = 0;
- 	PPNIndex = 0;
-	TLBIndex = 0;
-	memorySize = 0;
-	diskSize = 0;
-	pageSize = 0;
-	cacheSize = 0;
-	blockSize = 0;
-	nWay = 0;
-	for (int i=0; i<1000000; i++) {
-		DAddress[i] = 0;
-		DCycle[i] = 0;
-		IAddress[i] = 0;
-	}
-	DAddressLength = 0;
-	IAddressLength = 0;
+    cycle = 0;
+    halt = false;
+    for (int i=0; i<32; i++)
+        registers[i] = 0;
+    PC = 0;
+    for (int i=0; i<MAX_LENGTH; i++){
+        DMemory[i] = 0;
+        IMemory[i] = 0;
+    }
+    numBlock = 0;
+    numSet = 0;
+    PTESize = 0;
+    TLBSize = 0;
+    PPNMAX = 0;
+    PPNIndex = 0;
+    TLBIndex = 0;
+    memorySize = 0;
+    diskSize = 0;
+    pageSize = 0;
+    cacheSize = 0;
+    blockSize = 0;
+    nWay = 0;
+    for (int i=0; i<1000000; i++) {
+        DAddress[i] = 0;
+        DCycle[i] = 0;
+        IAddress[i] = 0;
+    }
+    DAddressLength = 0;
+    IAddressLength = 0;
 
-	for (int i=0; i<20; i++)
-		command[i] = 0;
+    for (int i=0; i<20; i++)
+        command[i] = 0;
 
-	cacheBlock = new blockEntry ();
-	queuedTLB = new LRUQueue ();
-	queuedMemory = new LRUQueue ();
-	cacheSet = new setEntry ();
-	resultPTE = new resultRecord ();
-	resultTLB = new resultRecord ();
-	resultCache = new resultRecord ();
+    cacheBlock = new blockEntry ();
+    queuedTLB = new LRUQueue ();
+    queuedMemory = new LRUQueue ();
+    cacheSet = new setEntry ();
+    resultPTE = new resultRecord ();
+    resultTLB = new resultRecord ();
+    resultCache = new resultRecord ();
 
-	snapShot = fopen ("snapshot.rpt", "w");
-	report = fopen ("report.rpt", "w");
+    snapShot = fopen ("snapshot.rpt", "w");
+    report = fopen ("report.rpt", "w");
 }
 
 void singleCycle ()
 {
-	if (!halt)
+    if (!halt)
         return;
     INST32 instruction = instructionFetcher(PC, IMemory);
     PC = PC+4;
@@ -117,7 +117,7 @@ void singleCycle ()
 
     registers[0]=0;
     if (!halt)
-		produceSnapShot(PC, snapShot, registers, cycle++);
+        produceSnapShot(PC, snapShot, registers, cycle++);
 }
 
 void produceReport ()
@@ -135,38 +135,38 @@ void produceReport ()
     {
         if(count == 0)
         {
-        	//memory size
-			if(command[1] == 0)
-				memorySize=64;
-			else 
-				memorySize=(command[1]);
+            //memory size
+            if(command[1] == 0)
+                memorySize=64;
+            else 
+                memorySize=(command[1]);
             
             //disk size
             diskSize = 1024;
             
             //page size
             if(command[3] == 0)
-            	pageSize = 8;
+                pageSize = 8;
             else 
-            	pageSize = command[3];
+                pageSize = command[3];
             
             //cache size
             if(command[5] == 0)
-            	cacheSize = 16;
+                cacheSize = 16;
             else 
-            	cacheSize = command[5];
-            	
+                cacheSize = command[5];
+                
             //block size
             if(command[6] == 0)
-            	blockSize = 4;
+                blockSize = 4;
             else 
-            	blockSize = command[6];
-            	
+                blockSize = command[6];
+                
             //n ways
             if(command[7] == 0)
-            	nWay = 4;
+                nWay = 4;
             else 
-            	nWay = command[7];
+                nWay = command[7];
 /*
             printf("I_memory_size = %d\n",memory_size);
             printf("I_disk_size = %d\n",disk_size);
@@ -175,7 +175,7 @@ void produceReport ()
             printf("I_block_size = %d\n",block_size);
             printf("I_n_way = %d\n",n_way);
 */
-		}
+        }
         else
         {
             if(command[2] == 0)
@@ -223,8 +223,8 @@ void produceReport ()
         numBlock = cacheSize / blockSize;
         numSet = numBlock / nWay;
 
-    	PTE = new PTEEntry[PTESize] ();
-    	TLB = new TLBEntry[TLBSize] ();
+        PTE = new PTEEntry[PTESize] ();
+        TLB = new TLBEntry[TLBSize] ();
         PPNtoTLBindex = new INST32[TLBSize];
         PPNtoVPN = new INST32[PPNMAX];
         
@@ -298,9 +298,9 @@ void produceReport ()
 
 int checkTLB(INST32) 
 {
-	return 0;
+    return 0;
 }
 void checkCache(int)
 {
-	
+    
 }
