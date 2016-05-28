@@ -46,7 +46,17 @@ void produceReport();
 
 int checkTLB (INST32);
 void checkCache(int);
+void modifyCacheValidBits (INST32)
 
+int pop (LRUQueue** tmpt)
+{
+    return 0;
+}
+
+void push (LRUQueue** tmpt, int t)
+{
+    
+}
 int main ()
 {
     initial ();
@@ -300,7 +310,76 @@ int checkTLB(INST32)
 {
     return 0;
 }
-void checkCache(int)
+
+void checkCache(int input)
 {
-    
+    INST32 tag_index = input / blockSize;
+    INST32 tags = tag_index / numSet;
+    INST32 index = tag_index % numSet;
+
+    int i;
+    int hit = 0;
+	int flag = 0;
+    int replace_index;
+
+    for (i=0; i<nWay; i++)
+        if (cacheBlock[index * nWay + i].validBits == 1    
+            && cacheBlock[index * nWay + i].tags == tags)
+        {
+            hit = 1;
+            break;
+        }
+
+    if (hit == 1)
+    {
+        resultCache->hit += 1;
+        push(&cacheSet[index].LRUArray,i);
+    }
+    else
+    {
+        resultCache->miss += 1;
+        if (cacheSet[index].index < nWay)
+        {
+                flag = 1;
+				cacheBlock[index * nWay + cacheSet[index].index]. validBits= 1;
+                cacheBlock[index * nWay + cacheSet[index].index].tags = tags;
+                push(&cacheSet[index].LRUArray, cacheSet[index].index);
+                cacheSet[index].index += 1;
+        }
+        else{
+            for(i=0; i<nWay; i++){
+                if(cacheBlock[index * nWay + i].validBits == 0){
+                    flag = 1;
+                    cacheBlock[index * nWay + i].validBits = 1;
+                    cacheBlock[index * nWay + i].tags = tags;
+                    push(&cacheSet[index].LRUArray, i);
+                    break;
+                }
+            }
+        }
+        if(flag == 0){
+            replace_index = pop(&cacheSet[index].LRUArray);
+            cacheBlock[index * nWay + replace_index].validBits = 1;
+            cacheBlock[index * nWay + replace_index].tags = tags;
+            push(&cacheSet[index].LRUArray, replace_index);
+
+        }
+    }
+}
+
+void modifyCacheValidBits (INST32 input)
+{
+    INST32 tag_index = input / blockSize;
+    INST32 tags= tag_index / numSet;
+    INST32 index = tag_index % numSet;
+    int i;
+
+    for (i=0; i<nWay; i++)
+        if (cacheBlock[index * nWay + i].validBits == 1
+            && cacheBlock[index * nWay + i].tags == tags)
+        {
+            cacheBlock[index * nWay + i].validBits = 0;
+            break;
+        }
+
 }
