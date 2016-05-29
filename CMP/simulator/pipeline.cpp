@@ -1,3 +1,4 @@
+#include <cmath>
 #include "library.h"
 #include "environment.h"
 
@@ -46,17 +47,93 @@ void produceReport();
 
 int checkTLB (INST32);
 void checkCache(int);
-void modifyCacheValidBits (INST32)
+void modifyCacheValidBits (INST32);
+INST32 checkPTE (INST32);
 
-int pop (LRUQueue** tmpt)
+//===================================
+//some tools
+
+int getPow (INST32 input)
 {
-    return 0;
+    INST32 i;
+    if (input == 1)
+        return 0;
+    for (i=1; i<=input/2; i++)
+        if (pow(2,i) == input)
+            return i;
+
+    printf("pow error!");
+    exit(1);
+    return -1;
 }
 
-void push (LRUQueue** tmpt, int t)
+int pop (LRUQueue* input)
 {
-    
+    int *queue = input->queue;
+    int return_PPN = input->queue[0];
+    int i;
+    for (i=0; i<input->length - 1; i++)
+    {
+        queue[i] = queue[i+1];
+    }
+    input->length -= 1;
+
+    return return_PPN;
 }
+
+void push (LRUQueue* input, int data)
+{
+    int *queue = input->queue;
+    int i,j;
+
+    for (i=0; i<input->length; i++)
+        if (queue[i] == data)
+        {
+            for (j=i; j<input->length; j++)
+            {
+                if (j < input->length - 1)
+                    queue[j] = queue[j+1];
+                else{
+                    input->length -= 1;
+                    break;
+                }
+            }
+            break;
+        }
+
+    queue[input->length]=data; // add at queue's end
+    input->length += 1;
+}
+
+int fetchDataToMemory (INST32 input)
+{
+    INST32 return_PPN;
+    INST32 index;
+    int i;
+
+    if (PPNIndex < PPNMAX)
+    {
+        return_PPN = PPNIndex;
+        push(queuedMemory, PPNIndex);
+        PPNIndex += 1;
+    }
+    else
+    {
+        return_PPN = pop(queuedMemory);
+        PTE[PPNtoVPN[return_PPN]].validBits = 0;
+        for (i=0; i<pageSize; i++)
+        {
+            index = (return_PPN << getPow (pageSize)) | (i);
+            modifyCacheValidBits (index);
+        }
+        push(queuedMemory,return_PPN);
+    }
+
+    return return_PPN;
+}
+
+//=========================================
+
 int main ()
 {
     initial ();
@@ -255,8 +332,6 @@ void produceReport ()
             {
                 tmpt = checkTLB(IAddress[i]);
                 checkCache(tmpt);
-                //printf("V_add -> P_add = 0x%08x -> 0x%08x",I_address[i],tmp);
-                //putchar('\n');
             }
             ICache_hits = resultCache->hit;
             ICache_misses = resultCache->miss;
@@ -306,9 +381,59 @@ void produceReport ()
     fprintf(report,"# misses: %d\n\n",DPageTable_misses);
 }
 
-int checkTLB(INST32) 
+int checkTLB(INST32 input) 
 {
-    return 0;
+    int offset = getPow (pageSize);
+    INST32 VPN = input >> offset;
+    INST32 PPN;
+    
+    int i;
+    int index;
+    int hit = 0;
+    for (i=0; i<TLBIndex; i++)
+    {
+        if (TLB[i].validBits == 1 && TLB[i].VPN == VPN)
+        {
+            PPN = TLB[i].PPN;
+            hit = 1;
+            break;
+        }
+    }
+
+    if (hit == 1)
+    {
+        PPN = TLB[i].PPN;
+        push(queuedTLB, i);
+        resultTLB->hit += 1;
+    }
+    else
+    {
+        PPN = checkPTE(input);
+        if (TLB[PPNtoTLBindex[PPN]].PPN == PPN)
+            TLB[PPNtoTLBindex[PPN]].validBits = 0;
+
+        if (TLBIndex < TLBSize)
+        {
+            PPNtoTLBindex[PPN] = TLBIndex;
+            TLB[TLBIndex].validBits = 1;
+            TLB[TLBIndex].VPN = VPN;
+            TLB[TLBIndex].PPN = PPN;
+            push(queuedTLB, TLBIndex);
+            TLBIndex += 1;
+        }
+        else
+        {
+            index = pop(queuedTLB);
+            PPNtoTLBindex[PPN] = index;
+            push(queuedTLB, index);
+            TLB[index].validBits = 1;
+            TLB[index].VPN = VPN;
+            TLB[index].PPN = PPN;
+        }
+        resultTLB->miss += 1;
+    }
+    
+    return (PPN << offset) | (input & ( ~(0xFFFFFFFF << getPow (pageSize))));
 }
 
 void checkCache(int input)
@@ -333,7 +458,7 @@ void checkCache(int input)
     if (hit == 1)
     {
         resultCache->hit += 1;
-        push(&cacheSet[index].LRUArray,i);
+        push(cacheSet[index].LRUArray,i);
     }
     else
     {
@@ -343,7 +468,7 @@ void checkCache(int input)
                 flag = 1;
 				cacheBlock[index * nWay + cacheSet[index].index]. validBits= 1;
                 cacheBlock[index * nWay + cacheSet[index].index].tags = tags;
-                push(&cacheSet[index].LRUArray, cacheSet[index].index);
+                push(cacheSet[index].LRUArray, cacheSet[index].index);
                 cacheSet[index].index += 1;
         }
         else{
@@ -352,16 +477,16 @@ void checkCache(int input)
                     flag = 1;
                     cacheBlock[index * nWay + i].validBits = 1;
                     cacheBlock[index * nWay + i].tags = tags;
-                    push(&cacheSet[index].LRUArray, i);
+                    push(cacheSet[index].LRUArray, i);
                     break;
                 }
             }
         }
         if(flag == 0){
-            replace_index = pop(&cacheSet[index].LRUArray);
+            replace_index = pop(cacheSet[index].LRUArray);
             cacheBlock[index * nWay + replace_index].validBits = 1;
             cacheBlock[index * nWay + replace_index].tags = tags;
-            push(&cacheSet[index].LRUArray, replace_index);
+            push(cacheSet[index].LRUArray, replace_index);
 
         }
     }
@@ -372,14 +497,35 @@ void modifyCacheValidBits (INST32 input)
     INST32 tag_index = input / blockSize;
     INST32 tags= tag_index / numSet;
     INST32 index = tag_index % numSet;
-    int i;
-
-    for (i=0; i<nWay; i++)
+    
+    for (int i=0; i<nWay; i++)
         if (cacheBlock[index * nWay + i].validBits == 1
             && cacheBlock[index * nWay + i].tags == tags)
         {
             cacheBlock[index * nWay + i].validBits = 0;
             break;
         }
+}
 
+INST32 checkPTE (INST32 index)
+{
+
+    INST32 VPN = index >> (getPow (pageSize));
+    INST32 PPN;
+    
+    if (PTE[VPN].validBits == 0)
+    {
+        PTE[VPN].validBits = 1;
+        PPN = fetchDataToMemory(index);
+        PTE[VPN].PPN = PPN;
+        PPNtoVPN[PPN] = VPN;
+        resultPTE->miss += 1;
+    }
+    else
+    {
+        push(queuedMemory, PTE[VPN].PPN);
+        resultPTE->hit++;
+    }
+
+    return PTE[VPN].PPN;
 }
