@@ -1,4 +1,4 @@
-CC = g++ -lm -std=c++11
+CC = g++ -lm -std=c++11 -Wall
 
 SRCS = ./*.cpp
 OBS = ./*.o
